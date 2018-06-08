@@ -51,6 +51,4 @@ class Test_Plugin extends \WP_UnitTestCase {
 		unset( $config, $plugin ); // Test should actually use these.
 		return array( 'foo' => 'bar' );
 	}
-
-	/* Put other test functions here... */
 }
