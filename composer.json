@@ -1,0 +1,20 @@
+{
+	"name": "wptide/wporg-tide-api",
+	"type": "wordpress-plugin",
+	"description": "This plugin extends the WP Tide API for the needs of WordPress.org.",
+	"version": "1.0.0-beta",
+	"homepage": "https://github.com/wptide/wporg-tide-api/",
+	"license": [ "GPL-2.0+" ],
+	"authors": [
+		{
+			"name": "XWP",
+			"homepage": "https://xwp.co"
+		}
+	],
+	"require-dev": {
+		"wp-coding-standards/wpcs": "*",
+		"wimg/php-compatibility": "*",
+		"dealerdirect/phpcodesniffer-composer-installer": "^0.4.4",
+		"php-coveralls/php-coveralls": "~2.1"
+	}
+}
