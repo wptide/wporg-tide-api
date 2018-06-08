@@ -1,4 +1,4 @@
-DEFAULT_BASE_BRANCH=develop
+DEFAULT_BASE_BRANCH=master
 PHPCS_IGNORE='dev-lib/*,node_modules/*,tests/*,vendor/*'
 PHPUNIT_CONFIG=phpunit.xml.dist
 DOCKER_PHPUNIT_BIN=bin/phpunit
