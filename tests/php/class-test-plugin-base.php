@@ -175,4 +175,3 @@ class Test_Doc_hooks extends Plugin {
 		return $content;
 	}
 }
-
