@@ -1,4 +1,5 @@
 DEFAULT_BASE_BRANCH=master
+CHECK_SCOPE=all
 PHPCS_IGNORE='dev-lib/*,node_modules/*,tests/*,vendor/*'
 PHPUNIT_CONFIG=phpunit.xml.dist
 DOCKER_PHPUNIT_BIN=bin/phpunit
