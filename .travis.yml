@@ -1,5 +1,13 @@
 sudo: required
 
+notifications:
+    email:
+        on_success: never
+        on_failure: change
+    slack:
+        rooms:
+            secure: Z7TIhh7RWj3aCfp7sBhd0J5EzyrmO8YsyYaZnYlWgKTBQ+YbaKN+bhQ6FmyiBqTtpGF7lhxjYY8Gp3TecRYdUFnGmKhf1FgM/ctWtBwdYlNSmCFFa+GmtNuL38Ih6k1yQXmmZLNABaubO1xDmQKWkH1Mx469p+dDm6Z0/12C4GTRx8TS0zjQMzU0MQqHmizU6bkmFYpBeYwqQx7iNlfSX47lvhk0IgVpgEfzbf8KIR2spEGWQ/dxzOpTez1A/0AKyI74RjYdaVFgPtA6GR8b5K5ia9m22A2ckmhDMkkr//aovVXm23k6rlYqlsbmh6Jyn1SbJDZOZi/D4VsVyMNnHOjQ6HS66v68iSosp7gzKsyhURaUg9wqDRH1+o1RJu7DOZ0iadMIquceLfvmEp3RGxZtaSCQA5jTyA4Cint4r+PTEzi67bu5159r/IkDkBUeLJ/g2j3eF37vBPuzAH+bqN3YSbj/prIrE9ddTFDy5hh+RfzvHxqrv1xmlIRQ3ucg+0Ffpq5eXFHpwMH8un0OBA9xhTliOLPnmhodIHTgFI+/1dQjc3zaKw6Wc40JrZsiN7IYIMx02J7xzsASFlnF2WJ6pXEw5998PQhZ9darf82sAxWoK58bmTOK5qyuZ5XK+jp5Z2rV4G1L317EoyKPenXbhXB/k+BRf7iDU/RUb7Y=
+
 cache:
   directories:
     - $HOME/phpunit-bin
