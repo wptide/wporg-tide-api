@@ -183,4 +183,56 @@ class Plugin extends Plugin_Base {
 
 		return true;
 	}
+
+	/**
+	 * Enable new WP.org client capabilities.
+	 *
+	 * @action edit_user_profile
+	 *
+	 * @param \WP_User $user The user who's profile is getting viewed.
+	 */
+	public function user_profile_fields( $user ) {
+		?>
+		<h2><?php esc_html_e( 'WordPress.org Tide API Integration', 'tide-api' ); ?></h2>
+		<table class="form-table">
+			<tbody>
+			<tr>
+				<th>
+					<?php esc_html_e( 'Authorized to Alter', 'tide-api' ); ?>
+				</th>
+				<td>
+					<label for="alter-wporg-projects">
+						<input
+								class="regular-text"
+								name="alter-wporg-projects"
+								id="alter-wporg-projects"
+								type="checkbox"
+							<?php checked( user_can( $user, 'alter_dot_org_project' ) ); ?>
+						/>
+						<?php esc_html_e( 'User is able to alter repo projects.', 'tide-api' ); ?>
+					</label>
+				</td>
+			</tr>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Update user profile.
+	 *
+	 * @action edit_user_profile_update
+	 *
+	 * @param int $user_id The user ID.
+	 */
+	public function edit_user_profile_update( $user_id ) {
+		if ( current_user_can( 'edit_user', $user_id ) ) {
+			$user = new \WP_User( $user_id );
+			if ( array_key_exists( 'alter-wporg-projects', $_POST ) ) {
+				$user->add_cap( 'alter_dot_org_project' );
+			} else {
+				$user->remove_cap( 'alter_dot_org_project' );
+			}
+		}
+	}
 }
