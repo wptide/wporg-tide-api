@@ -60,10 +60,12 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 	 */
 	public function test_trigger_warning() {
 		$obj = $this;
-		set_error_handler( function ( $errno, $errstr ) use ( $obj ) {
-			$obj->assertEquals( 'WPOrg_Tide_API\Plugin: Param is 0!', $errstr );
-			$obj->assertEquals( \E_USER_WARNING, $errno );
-		} );
+		set_error_handler(
+			function ( $errno, $errstr ) use ( $obj ) {
+					$obj->assertEquals( 'WPOrg_Tide_API\Plugin: Param is 0!', $errstr );
+					$obj->assertEquals( \E_USER_WARNING, $errno );
+			}
+		);
 		$this->plugin->trigger_warning( 'Param is 0!', \E_USER_WARNING );
 		restore_error_handler();
 	}
@@ -87,7 +89,7 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 	 * @see Plugin_Base::add_doc_hooks()
 	 */
 	public function test_add_doc_hooks() {
-		$object = new Test_Doc_hooks();
+		$object = new Test_Doc_Hooks();
 
 		$this->assertEquals( 10, has_action( 'init', array( $object, 'init_action' ) ) );
 		$this->assertEquals( 10, has_action( 'the_content', array( $object, 'the_content_filter' ) ) );
@@ -110,10 +112,12 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 		$this->assertFalse( $mock->is_wpcom_vip_prod() );
 
 		$obj = $this;
-		set_error_handler( function ( $errno, $errstr ) use ( $obj, $mock ) {
-			$obj->assertEquals( sprintf( 'The add_doc_hooks method was already called on %s. Note that the Plugin_Base constructor automatically calls this method.', get_class( $mock ) ), $errstr );
-			$obj->assertEquals( \E_USER_NOTICE, $errno );
-		} );
+		set_error_handler(
+			function ( $errno, $errstr ) use ( $obj, $mock ) {
+					$obj->assertEquals( sprintf( 'The add_doc_hooks method was already called on %s. Note that the Plugin_Base constructor automatically calls this method.', get_class( $mock ) ), $errstr );
+					$obj->assertEquals( \E_USER_NOTICE, $errno );
+			}
+		);
 		$mock->add_doc_hooks();
 		restore_error_handler();
 
@@ -126,7 +130,7 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 	 * @see Plugin_Base::remove_doc_hooks()
 	 */
 	public function test_remove_doc_hooks() {
-		$object = new Test_Doc_hooks();
+		$object = new Test_Doc_Hooks();
 		$this->assertEquals( 10, has_action( 'init', array( $object, 'init_action' ) ) );
 		$this->assertEquals( 10, has_action( 'the_content', array( $object, 'the_content_filter' ) ) );
 
@@ -141,7 +145,7 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 	 * @see Plugin_Base::__destruct()
 	 */
 	public function test___destruct() {
-		$object = new Test_Doc_hooks();
+		$object = new Test_Doc_Hooks();
 		$this->assertEquals( 10, has_action( 'init', array( $object, 'init_action' ) ) );
 		$this->assertEquals( 10, has_action( 'the_content', array( $object, 'the_content_filter' ) ) );
 
@@ -152,9 +156,9 @@ class Test_Plugin_Base extends \WP_UnitTestCase {
 }
 
 /**
- * Test_Doc_hooks class.
+ * Test_Doc_Hooks class.
  */
-class Test_Doc_hooks extends Plugin {
+class Test_Doc_Hooks extends Plugin {
 
 	/**
 	 * Load this on the init action hook.

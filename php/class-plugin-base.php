@@ -19,7 +19,7 @@ abstract class Plugin_Base {
 	 *
 	 * @var array
 	 */
-	public $config = array();
+	public $config = [];
 
 	/**
 	 * Plugin slug.
@@ -54,7 +54,7 @@ abstract class Plugin_Base {
 	 *
 	 * @var array
 	 */
-	protected $autoload_matches_cache = array();
+	protected $autoload_matches_cache = [];
 
 	/**
 	 * Required instead of a static variable inside the add_doc_hooks method
@@ -62,7 +62,7 @@ abstract class Plugin_Base {
 	 *
 	 * @var array
 	 */
-	protected $_called_doc_hooks = array();
+	protected $_called_doc_hooks = [];
 
 	/**
 	 * Plugin_Base constructor.
@@ -93,6 +93,7 @@ abstract class Plugin_Base {
 		if ( empty( $reflection ) ) {
 			$reflection = new \ReflectionObject( $this );
 		}
+
 		return $reflection;
 	}
 
@@ -102,32 +103,54 @@ abstract class Plugin_Base {
 	 * @codeCoverageIgnore
 	 *
 	 * @param string $class Class name.
+	 *
 	 * @return void
 	 */
 	public function autoload( $class ) {
-		if ( ! isset( $this->autoload_matches_cache[ $class ] ) ) {
+
+		$class_root_pattern = 'WPOrg_Tide_API';
+
+		// If its not a WP_Tide_API class, exit now.
+		if ( ! preg_match( '/^' . $class_root_pattern . '/', $class ) ) {
+			return;
+		}
+
+		if ( ! isset( $this->found_matches[ $class ] ) ) {
+
 			if ( ! preg_match( '/^(?P<namespace>.+)\\\\(?P<class>[^\\\\]+)$/', $class, $matches ) ) {
 				$matches = false;
 			}
-			$this->autoload_matches_cache[ $class ] = $matches;
-		} else {
-			$matches = $this->autoload_matches_cache[ $class ];
-		}
-		if ( empty( $matches ) ) {
-			return;
-		}
-		if ( $this->get_object_reflection()->getNamespaceName() !== $matches['namespace'] ) {
-			return;
-		}
-		$class_name = $matches['class'];
 
-		$class_path = \trailingslashit( $this->dir_path );
-		if ( $this->autoload_class_dir ) {
-			$class_path .= \trailingslashit( $this->autoload_class_dir );
+			$this->found_matches[ $class ] = $matches;
+		} else {
+			$matches = $this->found_matches[ $class ];
 		}
-		$class_path .= sprintf( 'class-%s.php', strtolower( str_replace( '_', '-', $class_name ) ) );
-		if ( is_readable( $class_path ) ) {
-			require_once $class_path;
+
+		$class_parts = explode( '\\', $matches['namespace'] );
+
+		if ( ! empty( $class_parts ) && $class_root_pattern === $class_parts[0] ) {
+			array_shift( $class_parts );
+		} else {
+			return;
+		}
+
+		foreach ( $class_parts as $key => $item ) {
+			$class_parts[ $key ] = strtolower( implode( '-', array_filter( preg_split( '/(?=[A-Z])(?<![A-Z])/', $item ) ) ) );
+		}
+
+		$class_string = str_replace( '_', '', strtolower( implode( '-', array_filter( preg_split( '/(?=[A-Z])(?<![A-Z])/', $matches['class'] ) ) ) ) );
+		$class_path   = ! empty( $class_parts ) ? implode( DIRECTORY_SEPARATOR, array_filter( $class_parts ) ) . DIRECTORY_SEPARATOR : '';
+		$basedir      = $this->dir_path . DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . $class_path;
+
+		if ( ! empty( $class_string ) ) {
+
+			// One last chance to override the filename.
+			$filename = apply_filters( 'wporg_tide_api_class_file_override', $basedir . 'class-' . $class_string . '.php', $class );
+
+			// Include it if it exists and we have access.
+			if ( is_readable( $filename ) ) {
+				include_once $filename;
+			}
 		}
 	}
 
@@ -159,9 +182,9 @@ abstract class Plugin_Base {
 	 *
 	 * Returns a relative path from a specified starting position of a full path
 	 *
-	 * @param string $path The full path to start with.
+	 * @param string $path  The full path to start with.
 	 * @param string $start The directory after which to start creating the relative path.
-	 * @param string $sep The directory separator.
+	 * @param string $sep   The directory separator.
 	 *
 	 * @return string
 	 */
@@ -175,6 +198,7 @@ abstract class Plugin_Base {
 				}
 			}
 		}
+
 		return implode( $sep, $path );
 	}
 
@@ -208,7 +232,7 @@ abstract class Plugin_Base {
 	 *
 	 * @return mixed
 	 */
-	public function add_filter( $name, $callback, $args = array() ) {
+	public function add_filter( $name, $callback, $args = [] ) {
 		$default_args = array(
 			'priority'  => 10,
 			'arg_count' => PHP_INT_MAX,
@@ -226,7 +250,7 @@ abstract class Plugin_Base {
 	 *
 	 * @return mixed
 	 */
-	public function add_action( $name, $callback, $args = array() ) {
+	public function add_action( $name, $callback, $args = [] ) {
 		$default_args = array(
 			'priority'  => 10,
 			'arg_count' => PHP_INT_MAX,
@@ -245,11 +269,12 @@ abstract class Plugin_Base {
 	 *
 	 * @return mixed
 	 */
-	protected function _add_hook( $type, $name, $callback, $args = array() ) {
+	protected function _add_hook( $type, $name, $callback, $args = [] ) {
 		$priority  = isset( $args['priority'] ) ? $args['priority'] : 10;
 		$arg_count = isset( $args['arg_count'] ) ? $args['arg_count'] : PHP_INT_MAX;
 		$fn        = sprintf( '\add_%s', $type );
 		$retval    = \call_user_func( $fn, $name, $callback, $priority, $arg_count );
+
 		return $retval;
 	}
 
@@ -268,6 +293,7 @@ abstract class Plugin_Base {
 			if ( ! $this->is_wpcom_vip_prod() ) {
 				trigger_error( esc_html( $notice ), \E_USER_NOTICE );
 			}
+
 			return;
 		}
 		$this->_called_doc_hooks[ $class_name ] = true;
@@ -282,7 +308,10 @@ abstract class Plugin_Base {
 					$name     = $match['name'];
 					$priority = empty( $match['priority'] ) ? 10 : intval( $match['priority'] );
 					$callback = array( $object, $method->getName() );
-					call_user_func( array( $this, "add_{$type}" ), $name, $callback, compact( 'priority', 'arg_count' ) );
+					call_user_func( array(
+						$this,
+						"add_{$type}",
+					), $name, $callback, compact( 'priority', 'arg_count' ) );
 				}
 			}
 		}
