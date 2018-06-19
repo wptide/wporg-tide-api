@@ -17,6 +17,13 @@ use WP_Tide_API\Utility\User;
 class Plugin extends Plugin_Base {
 
 	/**
+	 * $handled determines if a post has already been handled to prevent possible looping.
+	 *
+	 * @var bool
+	 */
+	public static $handled = false;
+
+	/**
 	 * Initiate the plugin resources.
 	 *
 	 * @action init
@@ -42,13 +49,18 @@ class Plugin extends Plugin_Base {
 			return $post;
 		}
 
+		// Prevent possible loops because of internal requests.
+		if ( static::$handled ) {
+			return $post;
+		}
+
 		// The fact that we got this far means the user exists. We just need the ID.
 		$user    = get_user_by( 'login', $request->get_param( 'project_client' ) );
 		$user_id = $user->ID;
 
 		// Handle wporg web hooks.
 		if ( ! is_wp_error( $post ) ) {
-			return $this->handle_existing_post( $post, $request, $user_id );
+			return $this->handle_existing_post( $post, $request );
 		} else {
 			return $this->handle_non_existing_post( $post, $request, $user_id );
 		}
@@ -57,20 +69,55 @@ class Plugin extends Plugin_Base {
 	/**
 	 * For non-wporg clients, just return the post. Else, rerun the audit.
 	 *
-	 * @todo This needs to be implemented still.
-	 *
 	 * @param \WP_Post         $post    The existing post.
 	 * @param \WP_REST_Request $request The original request.
-	 * @param int              $user_id The wporg user id.
 	 *
 	 * @return mixed
 	 */
-	public function handle_existing_post( $post, $request, $user_id ) {
+	public function handle_existing_post( $post, $request ) {
 
-		// If not authenticated user with capabilities then just send the post.
+		// If not authenticated user with capabilities then just return the post.
 		if ( ! User::has_cap( 'alter_dot_org_project' ) ) {
 			return $post;
 		}
+
+		// Get project slug from 'audit_project' taxonomy.
+		$terms = wp_get_post_terms( $post->ID, 'audit_project' );
+		$slug  = '';
+		if ( ! empty( $terms ) ) {
+			$slug = $terms[0]->name;
+		}
+
+		// Should not need to do this, but just in case.
+		if ( empty( $slug ) ) {
+			$slug = $post->post_name;
+		}
+
+		// Get relevant meta fields.
+		$project_type = get_post_meta( $post->ID, 'project_type', true );
+		$source_url   = get_post_meta( $post->ID, 'source_url', true );
+		$source_type  = get_post_meta( $post->ID, 'source_type', true );
+		$standards    = get_post_meta( $post->ID, 'standards', true );
+		$standards    = maybe_unserialize( $standards );
+		$visibility   = get_post_meta( $post->ID, 'visibility', true );
+
+		// Create a new audit requests.
+		$this->dispatch_new_request(
+			$request->get_route(),
+			$post,
+			$post->post_title,
+			$post->post_content,
+			$source_url,
+			$source_type,
+			$project_type,
+			$slug,
+			$visibility,
+			true,
+			$standards
+		);
+
+		// Consider this request handled!
+		static::$handled = true;
 
 		return $post;
 	}
@@ -135,22 +182,61 @@ class Plugin extends Plugin_Base {
 		update_post_meta( $post_id, 'visibility', 'public' );
 		wp_add_object_terms( $post_id, $slug, 'audit_project' );
 
-		// Initiate new audit request.
-		$post          = get_post( $post_id );
-		$audit_request = new \WP_REST_Request( \WP_REST_Server::CREATABLE, $request->get_route() );
-		$controller    = new Audit_Posts_Controller( 'audit' );
-		$audit_request->set_param( 'title', $slug );
-		$audit_request->set_param( 'content', 'pending' );
+		// Get the new post.
+		$post = get_post( $post_id );
+
+		// Create new audit request.
+		$this->dispatch_new_request(
+			$request->get_route(),
+			$post,
+			$slug,
+			'pending',
+			$source_url,
+			$source_type,
+			$project_type,
+			$slug
+		);
+
+		// Consider this request handled!
+		static::$handled = true;
+
+		return $post;
+	}
+
+	/**
+	 * Get a new \WP_REST_Request object for the audit.
+	 *
+	 * @param string   $route        The REST route.
+	 * @param \WP_Post $post         The WP post to dispatch.
+	 * @param string   $title        Title of the audit.
+	 * @param string   $content      The content/description of the project.
+	 * @param string   $source_url   Where the project can be downloaded from.
+	 * @param string   $source_type  This will usually be zip.
+	 * @param string   $project_type Theme or Plugin.
+	 * @param string   $slug         Slug of the project (translated to term).
+	 * @param string   $visibility   Project is private or public.
+	 * @param bool     $force        Force an audit for audit servers who honor this.
+	 * @param array    $standards    An array of standards. Leave empty to use defaults.
+	 *
+	 * @return void
+	 */
+	private function dispatch_new_request( $route, $post, $title, $content, $source_url, $source_type, $project_type, $slug, $visibility = 'public', $force = false, $standards = [] ) {
+
+		$audit_request = new \WP_REST_Request( \WP_REST_Server::CREATABLE, $route );
+
+		$audit_request->set_param( 'title', $title );
+		$audit_request->set_param( 'content', $content );
 		$audit_request->set_param( 'source_url', $source_url );
 		$audit_request->set_param( 'source_type', $source_type );
 		$audit_request->set_param( 'project_type', $project_type );
-		$audit_request->set_param( 'force', false );
-		$audit_request->set_param( 'visibility', 'public' );
 		$audit_request->set_param( 'slug', $slug );
+		$audit_request->set_param( 'visibility', $visibility );
+		$audit_request->set_param( 'force', $force );
+		$audit_request->set_param( 'standards', $standards );
 
+		// Send the new request to the audit post controller.
+		$controller = new Audit_Posts_Controller( 'audit' );
 		$controller->create_audit_request( $audit_request, $post, $standards );
-
-		return $post;
 	}
 
 	/**
