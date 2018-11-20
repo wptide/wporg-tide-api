@@ -2,8 +2,8 @@
 /**
  * Plugin Name: WPOrg Tide API
  * Plugin URI: https://github.com/xwp/wp-wporg-tide-api
- * Description: ...
- * Version: 0.1
+ * Description: This plugin extends the WP Tide API for the needs of WordPress.org.
+ * Version: 1.0.0-beta
  * Author:  XWP
  * Author URI: https://xwp.co/
  * License: GPLv2+
@@ -11,7 +11,7 @@
  * Text Domain: wporg-tide-api
  * Domain Path: /languages
  *
- * Copyright (c) 2016 XWP (https://xwp.co/)
+ * Copyright (c) 2018 XWP (https://xwp.co/)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 or, at
