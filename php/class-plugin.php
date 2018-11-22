@@ -24,16 +24,7 @@ class Plugin extends Plugin_Base {
 	public static $handled = false;
 
 	/**
-	 * Initiate the plugin resources.
-	 *
-	 * @action init
-	 */
-	public function init() {
-		$this->config = apply_filters( 'wporg_tide_api_plugin_config', $this->config, $this );
-	}
-
-	/**
-	 * Intercept the post response to inject webhook'like features for wp.org.
+	 * Intercept the post response to inject webhook like features for wp.org.
 	 *
 	 * @param \WP_Post|\WP_Error $post    The post object.
 	 * @param \WP_REST_Request   $request The original request.
@@ -44,25 +35,49 @@ class Plugin extends Plugin_Base {
 	 */
 	public function tide_api_get_altid_post( $post, $request ) {
 
-		// If its not a wporg project its not of our concern. Pass it on.
-		if ( 'wporg' !== $request->get_param( 'project_client' ) ) {
-			return $post;
-		}
-
 		// Prevent possible loops because of internal requests.
 		if ( static::$handled ) {
 			return $post;
 		}
 
-		// The fact that we got this far means the user exists. We just need the ID.
-		$user    = get_user_by( 'login', $request->get_param( 'project_client' ) );
-		$user_id = $user->ID;
+		// Not a GET request.
+		if ( 'GET' !== $request->get_method() ) {
+			return $post;
+		}
 
-		// Handle wporg web hooks.
-		if ( ! is_wp_error( $post ) ) {
+		// Not a wporg project.
+		if ( 'wporg' !== $request->get_param( 'project_client' ) ) {
+			return $post;
+		}
+
+		// Missing project_type param.
+		if ( null === $request->get_param( 'project_type' ) ) {
+			return $post;
+		}
+
+		// Missing project_slug param.
+		if ( null === $request->get_param( 'project_slug' ) ) {
+			return $post;
+		}
+
+		// Missing version param.
+		if ( null === $request->get_param( 'version' ) ) {
+			return $post;
+		}
+
+		// The fact that we got this far means the user should exist, but we need the ID.
+		$user = get_user_by( 'login', $request->get_param( 'project_client' ) );
+
+		// User doesn't exist yet.
+		if ( ! isset( $user->ID ) ) {
+			return $post;
+		}
+
+		// Handle request.
+		if ( $post instanceof \WP_Post ) {
 			return $this->handle_existing_post( $post, $request );
 		} else {
-			return $this->handle_non_existing_post( $post, $request, $user_id );
+			return $this->handle_non_existing_post( $post, $request, $user->ID );
 		}
 	}
 
@@ -76,21 +91,30 @@ class Plugin extends Plugin_Base {
 	 */
 	public function handle_existing_post( $post, $request ) {
 
-		// If not authenticated user with capabilities then just return the post.
-		if ( ! User::has_cap( 'alter_dot_org_project' ) ) {
+		$current_user = wp_get_current_user();
+		$is_author    = (
+			! is_wp_error( $current_user )
+			&&
+			isset( $post->post_author ) && absint( $post->post_author ) === absint( $current_user->ID )
+			&&
+			$current_user->has_cap( 'api_client' )
+		);
+
+		// If this is not the authenticated `wporg` user return the post.
+		if ( ! $is_author ) {
 			return $post;
 		}
 
 		// Get project slug from 'audit_project' taxonomy.
 		$terms = wp_get_post_terms( $post->ID, 'audit_project' );
 		$slug  = '';
-		if ( ! empty( $terms ) ) {
+		if ( ! is_wp_error( $terms ) && isset( $terms[0]->name ) ) {
 			$slug = $terms[0]->name;
 		}
 
-		// Should not need to do this, but just in case.
+		// Must have an `audit_project` taxonomy slug associated with the post.
 		if ( empty( $slug ) ) {
-			$slug = $post->post_name;
+			return $post;
 		}
 
 		// Get relevant meta fields.
@@ -103,7 +127,6 @@ class Plugin extends Plugin_Base {
 
 		// Create a new audit requests.
 		$this->dispatch_new_request(
-			$request->get_route(),
 			$post,
 			$post->post_title,
 			$post->post_content,
@@ -136,7 +159,7 @@ class Plugin extends Plugin_Base {
 	public function handle_non_existing_post( $error, $request, $user_id ) {
 
 		// This error is not of our concern so pass it on.
-		if ( ! array_key_exists( 'rest_post_invalid_altid_lookup', $error->errors ) ) {
+		if ( isset( $error->errors ) && ! array_key_exists( 'rest_post_invalid_altid_lookup', $error->errors ) ) {
 			return $error;
 		}
 
@@ -147,6 +170,7 @@ class Plugin extends Plugin_Base {
 		$standards    = Audit::filter_standards( $standards );
 		$source_url   = sprintf( 'https://downloads.wordpress.org/%s/%s.%s.zip', $project_type, $slug, $version );
 		$source_type  = 'zip';
+		$visibility   = 'public';
 
 		// If this does not exist in the WP.org repository then don't do anything. Pass it on.
 		if ( ! $this->exists_in_repo( $project_type, $slug, $version ) ) {
@@ -171,15 +195,17 @@ class Plugin extends Plugin_Base {
 			'post_type'      => 'audit',
 			'comment_status' => 'closed',
 			'ping_status'    => 'closed',
+			'meta_input'     => array(
+				'project_type' => $project_type,
+				'source_url'   => $source_url,
+				'source_type'  => $source_type,
+				'standards'    => $standards,
+				'version'      => $version,
+				'visibility'   => $visibility,
+			),
 		] );
 
-		// Update the required meta.
-		update_post_meta( $post_id, 'project_type', $project_type );
-		update_post_meta( $post_id, 'source_url', $source_url );
-		update_post_meta( $post_id, 'source_type', $source_type );
-		update_post_meta( $post_id, 'standards', $standards );
-		update_post_meta( $post_id, 'version', $version );
-		update_post_meta( $post_id, 'visibility', 'public' );
+		// Add the slug.
 		wp_add_object_terms( $post_id, $slug, 'audit_project' );
 
 		// Get the new post.
@@ -187,14 +213,16 @@ class Plugin extends Plugin_Base {
 
 		// Create new audit request.
 		$this->dispatch_new_request(
-			$request->get_route(),
 			$post,
 			$slug,
 			'pending',
 			$source_url,
 			$source_type,
 			$project_type,
-			$slug
+			$slug,
+			$visibility,
+			false,
+			$standards
 		);
 
 		// Consider this request handled!
@@ -206,7 +234,8 @@ class Plugin extends Plugin_Base {
 	/**
 	 * Get a new \WP_REST_Request object for the audit.
 	 *
-	 * @param string   $route        The REST route.
+	 * @codeCoverageIgnore
+	 *
 	 * @param \WP_Post $post         The WP post to dispatch.
 	 * @param string   $title        Title of the audit.
 	 * @param string   $content      The content/description of the project.
@@ -220,9 +249,9 @@ class Plugin extends Plugin_Base {
 	 *
 	 * @return void
 	 */
-	private function dispatch_new_request( $route, $post, $title, $content, $source_url, $source_type, $project_type, $slug, $visibility = 'public', $force = false, $standards = [] ) {
+	public function dispatch_new_request( $post, $title, $content, $source_url, $source_type, $project_type, $slug, $visibility = 'public', $force = false, $standards = [] ) {
 
-		$audit_request = new \WP_REST_Request( \WP_REST_Server::CREATABLE, $route );
+		$audit_request = new \WP_REST_Request( \WP_REST_Server::CREATABLE, 'tide/v1/audit' );
 
 		$audit_request->set_param( 'title', $title );
 		$audit_request->set_param( 'content', $content );
@@ -233,6 +262,7 @@ class Plugin extends Plugin_Base {
 		$audit_request->set_param( 'visibility', $visibility );
 		$audit_request->set_param( 'force', $force );
 		$audit_request->set_param( 'standards', $standards );
+		$audit_request->set_param( 'request_client', 'wporg' );
 
 		// Send the new request to the audit post controller.
 		$controller = new Audit_Posts_Controller( 'audit' );
@@ -248,7 +278,7 @@ class Plugin extends Plugin_Base {
 	 *
 	 * @return bool Does it?
 	 */
-	private function exists_in_repo( $type, $slug, $version ) {
+	public function exists_in_repo( $type, $slug, $version ) {
 		$url = sprintf( 'https://api.wordpress.org/%s/info/1.1/?action=%s_information&request[slug]=%s&request[fields][versions]=1&request[fields][description]=0',
 			$type . 's',
 			$type,
@@ -261,64 +291,12 @@ class Plugin extends Plugin_Base {
 			return false;
 		}
 
-		$versions = json_decode( $response['body'], true )['versions'];
+		$body = json_decode( $response['body'], true );
 
-		if ( ! array_key_exists( $version, $versions ) ) {
+		if ( ! isset( $body['versions'] ) || ! array_key_exists( $version, $body['versions'] ) ) {
 			return false;
 		}
 
 		return true;
-	}
-
-	/**
-	 * Enable new WP.org client capabilities.
-	 *
-	 * @action edit_user_profile
-	 *
-	 * @param \WP_User $user The user who's profile is getting viewed.
-	 */
-	public function user_profile_fields( $user ) {
-		?>
-		<h2><?php esc_html_e( 'WordPress.org Tide API Integration', 'tide-api' ); ?></h2>
-		<table class="form-table">
-			<tbody>
-			<tr>
-				<th>
-					<?php esc_html_e( 'Authorized to Alter', 'tide-api' ); ?>
-				</th>
-				<td>
-					<label for="alter-wporg-projects">
-						<input
-								class="regular-text"
-								name="alter-wporg-projects"
-								id="alter-wporg-projects"
-								type="checkbox"
-							<?php checked( user_can( $user, 'alter_dot_org_project' ) ); ?>
-						/>
-						<?php esc_html_e( 'User is able to alter repo projects.', 'tide-api' ); ?>
-					</label>
-				</td>
-			</tr>
-			</tbody>
-		</table>
-		<?php
-	}
-
-	/**
-	 * Update user profile.
-	 *
-	 * @action edit_user_profile_update
-	 *
-	 * @param int $user_id The user ID.
-	 */
-	public function edit_user_profile_update( $user_id ) {
-		if ( current_user_can( 'edit_user', $user_id ) ) {
-			$user = new \WP_User( $user_id );
-			if ( array_key_exists( 'alter-wporg-projects', $_POST ) ) {
-				$user->add_cap( 'alter_dot_org_project' );
-			} else {
-				$user->remove_cap( 'alter_dot_org_project' );
-			}
-		}
 	}
 }

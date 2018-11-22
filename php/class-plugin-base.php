@@ -15,13 +15,6 @@ namespace WPOrg_Tide_API;
 abstract class Plugin_Base {
 
 	/**
-	 * Plugin config.
-	 *
-	 * @var array
-	 */
-	public $config = [];
-
-	/**
 	 * Plugin slug.
 	 *
 	 * @var string
