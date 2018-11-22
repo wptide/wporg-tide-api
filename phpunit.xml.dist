@@ -7,7 +7,7 @@
 	convertWarningsToExceptions="true"
 	>
 	<php>
-		<const name="WP_TEST_ACTIVATED_PLUGINS" value="" />
+		<const name="WP_TEST_ACTIVATED_PLUGINS" value="wp-tide-api/class-wp-tide-api.php" />
 		<env name="WP_TESTS_DIR" value="./tests" />
 	</php>
 
