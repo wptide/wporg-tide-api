@@ -139,6 +139,15 @@ class Plugin extends Plugin_Base {
 			$standards
 		);
 
+		if( class_exists( 'Redis_Page_Cache' ) ) {
+			$cache          = new Redis_Page_Cache();
+			$plugin_version = $request->get_param( 'version' );
+
+			$url_to_clear = get_rest_url( null, sprintf( 'tide/v1/audit/wporg/%s/%s/%s', $project_type, $slug, $plugin_version ) );
+
+			$cache::clear_cache_by_url( $url_to_clear );
+		}
+
 		// Consider this request handled!
 		static::$handled = true;
 
