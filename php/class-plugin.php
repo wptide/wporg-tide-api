@@ -139,7 +139,7 @@ class Plugin extends Plugin_Base {
 			$standards
 		);
 
-		if( class_exists( 'Redis_Page_Cache' ) ) {
+		if ( class_exists( 'Redis_Page_Cache' ) ) {
 			$cache          = new Redis_Page_Cache();
 			$plugin_version = $request->get_param( 'version' );
 
