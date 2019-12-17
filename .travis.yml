@@ -1,3 +1,5 @@
+dist: trusty
+
 sudo: required
 
 notifications:
@@ -12,9 +14,7 @@ cache:
   directories:
     - $HOME/phpunit-bin
 
-language:
-  - php
-  - node_js
+language: php
 
 php:
   - 7.2.6
