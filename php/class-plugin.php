@@ -281,7 +281,8 @@ class Plugin extends Plugin_Base {
 	 * @return bool Does it?
 	 */
 	public function exists_in_repo( $type, $slug, $version ) {
-		$url = sprintf( 'https://api.wordpress.org/%s/info/1.1/?action=%s_information&request[slug]=%s&request[fields][versions]=1&request[fields][description]=0',
+		$url = sprintf(
+			'https://api.wordpress.org/%s/info/1.1/?action=%s_information&request[slug]=%s&request[fields][versions]=1&request[fields][description]=0',
 			$type . 's',
 			$type,
 			$slug
