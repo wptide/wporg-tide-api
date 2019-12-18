@@ -12,9 +12,9 @@
 		}
 	],
 	"require-dev": {
+		"dealerdirect/phpcodesniffer-composer-installer": "*",
 		"wp-coding-standards/wpcs": "*",
-		"wimg/php-compatibility": "*",
-		"dealerdirect/phpcodesniffer-composer-installer": "^0.4.4",
-		"php-coveralls/php-coveralls": "~2.1"
+		"phpcompatibility/php-compatibility": "*",
+		"php-coveralls/php-coveralls": "~2.2"
 	}
 }
