@@ -178,7 +178,7 @@ class Plugin extends Plugin_Base {
 		}
 
 		// Remove lighthouse if this is not a theme.
-		$lh_key = array_search( 'lighthouse', $standards );
+		$lh_key = array_search( 'lighthouse', $standards, true );
 		if ( 'theme' !== $project_type && false !== $lh_key ) {
 			unset( $standards[ $lh_key ] );
 		}
@@ -187,23 +187,25 @@ class Plugin extends Plugin_Base {
 		$standards = array_values( $standards );
 
 		// Insert a stubbed out post.
-		$post_id = wp_insert_post( [
-			'post_author'    => $user_id,
-			'post_content'   => 'pending',
-			'post_title'     => $slug,
-			'post_status'    => 'publish',
-			'post_type'      => 'audit',
-			'comment_status' => 'closed',
-			'ping_status'    => 'closed',
-			'meta_input'     => array(
-				'project_type' => $project_type,
-				'source_url'   => $source_url,
-				'source_type'  => $source_type,
-				'standards'    => $standards,
-				'version'      => $version,
-				'visibility'   => $visibility,
-			),
-		] );
+		$post_id = wp_insert_post(
+			[
+				'post_author'    => $user_id,
+				'post_content'   => 'pending',
+				'post_title'     => $slug,
+				'post_status'    => 'publish',
+				'post_type'      => 'audit',
+				'comment_status' => 'closed',
+				'ping_status'    => 'closed',
+				'meta_input'     => array(
+					'project_type' => $project_type,
+					'source_url'   => $source_url,
+					'source_type'  => $source_type,
+					'standards'    => $standards,
+					'version'      => $version,
+					'visibility'   => $visibility,
+				),
+			]
+		);
 
 		// Add the slug.
 		wp_add_object_terms( $post_id, $slug, 'audit_project' );

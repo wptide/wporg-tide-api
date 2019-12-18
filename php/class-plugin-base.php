@@ -300,10 +300,15 @@ abstract class Plugin_Base {
 					$name     = $match['name'];
 					$priority = empty( $match['priority'] ) ? 10 : intval( $match['priority'] );
 					$callback = array( $object, $method->getName() );
-					call_user_func( array(
-						$this,
-						"add_{$type}",
-					), $name, $callback, compact( 'priority', 'arg_count' ) );
+					call_user_func(
+						array(
+							$this,
+							"add_{$type}",
+						),
+						$name,
+						$callback,
+						compact( 'priority', 'arg_count' )
+					);
 				}
 			}
 		}
